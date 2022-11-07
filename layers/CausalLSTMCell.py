@@ -1,6 +1,8 @@
 __author__ = 'yunbo'
 
 import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from layers.TensorLayerNorm import tensor_layer_norm
 
 class CausalLSTMCell():

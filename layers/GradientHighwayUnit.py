@@ -1,7 +1,9 @@
 __author__ = 'yunbo'
 
 import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from layers.TensorLayerNorm import tensor_layer_norm
+tf.disable_v2_behavior()
 
 class GHU():
     def __init__(self, layer_name, filter_size, num_features, tln=False,
