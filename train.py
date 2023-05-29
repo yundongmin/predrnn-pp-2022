@@ -14,12 +14,8 @@ from utils import metrics
 from skimage.metrics import structural_similarity
 
 FLAGS = tf.compat.v1.app.flags.FLAGS
-# tf.compat.v1.app.flags.FLAGS 객체는 프로그램 실행 시에 커맨드 라인에서 전달된 인자 값을 저장하고 관리하는 역할.
 tf.compat.v1.disable_v2_behavior()
-#
 
-# 데이터셋 경로 설정
-#tf.compat.v1.app.flags.DEFINE_xxx() 함수를 사용하여 Flag 변수를 정의하고, 프로그램 실행 시에 해당 Flag 변수에 값을 할당.
 tf.compat.v1.app.flags.DEFINE_string('dataset_name', 'mnist',
                            'The name of dataset.')
 tf.compat.v1.app.flags.DEFINE_string('train_data_paths',
@@ -28,12 +24,12 @@ tf.compat.v1.app.flags.DEFINE_string('train_data_paths',
 tf.compat.v1.app.flags.DEFINE_string('valid_data_paths',
                            '/app/input/dataset/dongmin/mnist/moving-mnist-example/moving-mnist-valid.npz',
                            'validation data paths.')
-tf.compat.v1.app.flags.DEFINE_string('save_dir', '/app/outputs/mnist_predrnn_pp/net',
+log_dir = '/app/outputs/mnist_predrnn_pp/net/'
+tf.compat.v1.app.flags.DEFINE_string('save_dir', log_dir + 'mnist_predrnn_pp/net/',
                             'dir to store trained net.')
-tf.compat.v1.app.flags.DEFINE_string('gen_frm_dir', '/app/outputs/mnist_predrnn_pp/result/',
+tf.compat.v1.app.flags.DEFINE_string('gen_frm_dir', log_dir + 'mnist_predrnn_pp/result/',
                            'dir to store result.')
 
-# 모델과 관련된 설정
 tf.compat.v1.app.flags.DEFINE_string('model_name', 'predrnn_pp',
                            'The name of the architecture.')
 tf.compat.v1.app.flags.DEFINE_string('pretrained_model', '',
@@ -57,7 +53,6 @@ tf.compat.v1.app.flags.DEFINE_integer('patch_size', 4,
 tf.compat.v1.app.flags.DEFINE_boolean('layer_norm', True,
                             'whether to apply tensor layer norm.')
 
-# 학습과 관련된 설정
 tf.compat.v1.app.flags.DEFINE_float('lr', 0.001,
                           'base learning rate.')
 tf.compat.v1.app.flags.DEFINE_boolean('reverse_input', True,
@@ -74,10 +69,8 @@ tf.compat.v1.app.flags.DEFINE_integer('snapshot_interval', 10000,
                             'number of iters saving models.')
 
 
-# 모델 클래스 정의
 class Model(object):
     def __init__(self):
-        # 입력 placeholder 정의
         self.x = tf.compat.v1.placeholder(tf.float32,
                                           [FLAGS.batch_size,
                                            FLAGS.seq_length,
@@ -99,7 +92,6 @@ class Model(object):
         num_hidden = [int(x) for x in FLAGS.num_hidden.split(',')]
         num_layers = len(num_hidden)
         with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope()):
-            # 모델 생성
             output_list = models_factory.construct_model(
                 FLAGS.model_name, self.x,
                 self.mask_true,
@@ -111,17 +103,12 @@ class Model(object):
             loss = output_list[1]
             pred_ims = gen_ims[:,FLAGS.input_length-1:]
             self.loss_train = loss / FLAGS.batch_size
-            # gradients
             all_params = tf.compat.v1.trainable_variables()
             grads.append(tf.gradients(loss, all_params))
             self.pred_seq.append(pred_ims)
 
         self.train_op = tf.compat.v1.train.AdamOptimizer(FLAGS.lr).minimize(loss)
-        # TensorBoard를 위한 요약 정보 정의
-        # self.loss_summary = tf.compat.v1.summary.scalar('Loss', self.loss_train)
-        # self.merged_summary = tf.compat.v1.summary.merge_all()
 
-        # Session
         variables = tf.compat.v1.global_variables()
         self.saver = tf.compat.v1.train.Saver(variables)
         init = tf.compat.v1.global_variables_initializer()
@@ -131,9 +118,6 @@ class Model(object):
         self.sess = tf.compat.v1.Session(config=configProt)
         self.sess.run(init)
 
-        # TensorBoard를 위한 요약 작성기
-        # self.summary_writer = tf.compat.v1.summary.FileWriter('/app/outputs/mnist_predrnn_pp/net', self.sess.graph, flush_secs=10)
-
         if FLAGS.pretrained_model:
             self.saver.restore(self.sess, FLAGS.pretrained_model)
 
@@ -141,9 +125,7 @@ class Model(object):
         feed_dict = {self.x: inputs}
         feed_dict.update({self.tf_lr: lr})
         feed_dict.update({self.mask_true: mask_true})
-        loss, _, summary = self.sess.run((self.loss_train, self.train_op, self.merged_summary), feed_dict)
-        self.summary_writer.add_summary(summary)
-        self.summary_writer.flush()
+        loss, _ = self.sess.run((self.loss_train, self.train_op), feed_dict)
         return loss
 
     def test(self, inputs, mask_true):
@@ -159,7 +141,6 @@ class Model(object):
 
 
 def main(argv=None):
-    # 저장 디렉토리 초기화
     if tf.compat.v1.gfile.Exists(FLAGS.save_dir):
         tf.compat.v1.gfile.DeleteRecursively(FLAGS.save_dir)
     tf.compat.v1.gfile.MakeDirs(FLAGS.save_dir)
@@ -167,7 +148,6 @@ def main(argv=None):
         tf.compat.v1.gfile.DeleteRecursively(FLAGS.gen_frm_dir)
     tf.compat.v1.gfile.MakeDirs(FLAGS.gen_frm_dir)
 
-    # 데이터 로드
     train_input_handle, test_input_handle = datasets_factory.data_provider(
         FLAGS.dataset_name, FLAGS.train_data_paths, FLAGS.valid_data_paths,
         FLAGS.batch_size, FLAGS.img_width)
@@ -179,6 +159,10 @@ def main(argv=None):
     delta = 0.00002
     base = 0.99998
     eta = 1
+
+    # TensorBoard 설정
+    writer = tf.compat.v1.summary.FileWriter(log_dir)
+    writer.add_graph(tf.compat.v1.get_default_graph())
 
     for itr in range(1, FLAGS.max_iterations + 1):
         if train_input_handle.no_batch_left():
@@ -222,6 +206,11 @@ def main(argv=None):
         if itr % FLAGS.display_interval == 0:
             print('itr: ' + str(itr))
             print('training loss: ' + str(cost))
+
+            # 손실 값을 TensorBoard에 기록
+            summary = tf.compat.v1.Summary()
+            summary.value.add(tag='Training Loss', simple_value=float(cost))
+            writer.add_summary(summary, itr)
 
         if itr % FLAGS.test_interval == 0:
             print('test...')
@@ -315,6 +304,9 @@ def main(argv=None):
             model.save(itr)
 
         train_input_handle.next()
+
+    # TensorBoard에 기록된 내용을 저장
+    writer.close()
 
 if __name__ == '__main__':
     tf.compat.v1.app.run()
