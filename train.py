@@ -4,8 +4,6 @@ import os.path
 import time
 import numpy as np
 import tensorflow as tf
-# v1 only has flag attributes
-import tensorflow.compat.v1 as tf
 import cv2
 import sys
 import random
@@ -13,93 +11,95 @@ from nets import models_factory
 from data_provider import datasets_factory
 from utils import preprocess
 from utils import metrics
-#from skimage.measure import compare_ssim 
-#compare_ssim was depricated
 from skimage.metrics import structural_similarity
 
-# -----------------------------------------------------------------------------
-FLAGS = tf.app.flags.FLAGS
-tf.disable_v2_behavior()
-# data I/O
-tf.app.flags.DEFINE_string('dataset_name', 'mnist',
-                           'The name of dataset.')
-tf.app.flags.DEFINE_string('train_data_paths',
-                           'data/moving-mnist-example/moving-mnist-train.npz',
-                           'train data paths.')
-tf.app.flags.DEFINE_string('valid_data_paths',
-                           'data/moving-mnist-example/moving-mnist-valid.npz',
-                           'validation data paths.')
-tf.app.flags.DEFINE_string('save_dir', 'checkpoints/mnist_predrnn_pp',
-                            'dir to store trained net.')
-tf.app.flags.DEFINE_string('gen_frm_dir', 'results/mnist_predrnn_pp',
-                           'dir to store result.')
-# model
-tf.app.flags.DEFINE_string('model_name', 'predrnn_pp',
-                           'The name of the architecture.')
-tf.app.flags.DEFINE_string('pretrained_model', '',
-                           'file of a pretrained model to initialize from.')
-tf.app.flags.DEFINE_integer('input_length', 10,
-                            'encoder hidden states.')
-tf.app.flags.DEFINE_integer('seq_length', 20,
-                            'total input and output length.')
-tf.app.flags.DEFINE_integer('img_width', 64,
-                            'input image width.')
-tf.app.flags.DEFINE_integer('img_channel', 1,
-                            'number of image channel.')
-tf.app.flags.DEFINE_integer('stride', 1,
-                            'stride of a convlstm layer.')
-tf.app.flags.DEFINE_integer('filter_size', 5,
-                            'filter of a convlstm layer.')
-tf.app.flags.DEFINE_string('num_hidden', '128,64,64,64',
-                           'COMMA separated number of units in a convlstm layer.')
-tf.app.flags.DEFINE_integer('patch_size', 4,
-                            'patch size on one dimension.')
-tf.app.flags.DEFINE_boolean('layer_norm', True,
-                            'whether to apply tensor layer norm.')
-# optimization
-tf.app.flags.DEFINE_float('lr', 0.001,
-                          'base learning rate.')
-tf.app.flags.DEFINE_boolean('reverse_input', True,
-                            'whether to reverse the input frames while training.')
-tf.app.flags.DEFINE_integer('batch_size', 8,
-                            'batch size for training.')
-tf.app.flags.DEFINE_integer('max_iterations', 80000,
-                            'max num of steps.')
-tf.app.flags.DEFINE_integer('display_interval', 1,
-                            'number of iters showing training loss.')
-tf.app.flags.DEFINE_integer('test_interval', 2000,
-                            'number of iters for test.')
-tf.app.flags.DEFINE_integer('snapshot_interval', 10000,
-                            'number of iters saving models.')
-tf.compat.v1.disable_eager_execution()
+FLAGS = tf.compat.v1.app.flags.FLAGS
+# tf.compat.v1.app.flags.FLAGS 객체는 프로그램 실행 시에 커맨드 라인에서 전달된 인자 값을 저장하고 관리하는 역할.
+tf.compat.v1.disable_v2_behavior()
+#
 
+# 데이터셋 경로 설정
+#tf.compat.v1.app.flags.DEFINE_xxx() 함수를 사용하여 Flag 변수를 정의하고, 프로그램 실행 시에 해당 Flag 변수에 값을 할당.
+tf.compat.v1.app.flags.DEFINE_string('dataset_name', 'mnist',
+                           'The name of dataset.')
+tf.compat.v1.app.flags.DEFINE_string('train_data_paths',
+                           '/app/input/dataset/dongmin/mnist/moving-mnist-example/moving-mnist-train.npz',
+                           'train data paths.')
+tf.compat.v1.app.flags.DEFINE_string('valid_data_paths',
+                           '/app/input/dataset/dongmin/mnist/moving-mnist-example/moving-mnist-valid.npz',
+                           'validation data paths.')
+tf.compat.v1.app.flags.DEFINE_string('save_dir', '/app/outputs/mnist_predrnn_pp/net',
+                            'dir to store trained net.')
+tf.compat.v1.app.flags.DEFINE_string('gen_frm_dir', '/app/outputs/mnist_predrnn_pp/result/',
+                           'dir to store result.')
+
+# 모델과 관련된 설정
+tf.compat.v1.app.flags.DEFINE_string('model_name', 'predrnn_pp',
+                           'The name of the architecture.')
+tf.compat.v1.app.flags.DEFINE_string('pretrained_model', '',
+                           'file of a pretrained model to initialize from.')
+tf.compat.v1.app.flags.DEFINE_integer('input_length', 10,
+                            'encoder hidden states.')
+tf.compat.v1.app.flags.DEFINE_integer('seq_length', 20,
+                            'total input and output length.')
+tf.compat.v1.app.flags.DEFINE_integer('img_width', 64,
+                            'input image width.')
+tf.compat.v1.app.flags.DEFINE_integer('img_channel', 1,
+                            'number of image channel.')
+tf.compat.v1.app.flags.DEFINE_integer('stride', 1,
+                            'stride of a convlstm layer.')
+tf.compat.v1.app.flags.DEFINE_integer('filter_size', 5,
+                            'filter of a convlstm layer.')
+tf.compat.v1.app.flags.DEFINE_string('num_hidden', '128,64,64,64',
+                           'COMMA separated number of units in a convlstm layer.')
+tf.compat.v1.app.flags.DEFINE_integer('patch_size', 4,
+                            'patch size on one dimension.')
+tf.compat.v1.app.flags.DEFINE_boolean('layer_norm', True,
+                            'whether to apply tensor layer norm.')
+
+# 학습과 관련된 설정
+tf.compat.v1.app.flags.DEFINE_float('lr', 0.001,
+                          'base learning rate.')
+tf.compat.v1.app.flags.DEFINE_boolean('reverse_input', True,
+                            'whether to reverse the input frames while training.')
+tf.compat.v1.app.flags.DEFINE_integer('batch_size', 8,
+                            'batch size for training.')
+tf.compat.v1.app.flags.DEFINE_integer('max_iterations', 80000,
+                            'max num of steps.')
+tf.compat.v1.app.flags.DEFINE_integer('display_interval', 1,
+                            'number of iters showing training loss.')
+tf.compat.v1.app.flags.DEFINE_integer('test_interval', 2000,
+                            'number of iters for test.')
+tf.compat.v1.app.flags.DEFINE_integer('snapshot_interval', 10000,
+                            'number of iters saving models.')
+
+
+# 모델 클래스 정의
 class Model(object):
     def __init__(self):
-        # inputs
-        print("flags",FLAGS.batch_size)
-        self.x = tf.placeholder(tf.float32,
-                                [FLAGS.batch_size,
-                                 FLAGS.seq_length,
-                                 FLAGS.img_width//FLAGS.patch_size,
-                                 FLAGS.img_width//FLAGS.patch_size,
-                                 FLAGS.patch_size*FLAGS.patch_size*FLAGS.img_channel])
+        # 입력 placeholder 정의
+        self.x = tf.compat.v1.placeholder(tf.float32,
+                                          [FLAGS.batch_size,
+                                           FLAGS.seq_length,
+                                           FLAGS.img_width//FLAGS.patch_size,
+                                           FLAGS.img_width//FLAGS.patch_size,
+                                           FLAGS.patch_size*FLAGS.patch_size*FLAGS.img_channel])
 
-        self.mask_true = tf.placeholder(tf.float32,
-                                        [FLAGS.batch_size,
-                                         FLAGS.seq_length-FLAGS.input_length-1,
-                                         FLAGS.img_width//FLAGS.patch_size,
-                                         FLAGS.img_width//FLAGS.patch_size,
-                                         FLAGS.patch_size*FLAGS.patch_size*FLAGS.img_channel])
+        self.mask_true = tf.compat.v1.placeholder(tf.float32,
+                                                  [FLAGS.batch_size,
+                                                   FLAGS.seq_length-FLAGS.input_length-1,
+                                                   FLAGS.img_width//FLAGS.patch_size,
+                                                   FLAGS.img_width//FLAGS.patch_size,
+                                                   FLAGS.patch_size*FLAGS.patch_size*FLAGS.img_channel])
 
         grads = []
         loss_train = []
         self.pred_seq = []
-        self.tf_lr = tf.placeholder(tf.float32, shape=[])
+        self.tf_lr = tf.compat.v1.placeholder(tf.float32, shape=[])
         num_hidden = [int(x) for x in FLAGS.num_hidden.split(',')]
-        print(num_hidden)
         num_layers = len(num_hidden)
-        with tf.variable_scope(tf.get_variable_scope()):
-            # define a model
+        with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope()):
+            # 모델 생성
             output_list = models_factory.construct_model(
                 FLAGS.model_name, self.x,
                 self.mask_true,
@@ -112,21 +112,28 @@ class Model(object):
             pred_ims = gen_ims[:,FLAGS.input_length-1:]
             self.loss_train = loss / FLAGS.batch_size
             # gradients
-            all_params = tf.trainable_variables()
+            all_params = tf.compat.v1.trainable_variables()
             grads.append(tf.gradients(loss, all_params))
             self.pred_seq.append(pred_ims)
 
-        self.train_op = tf.train.AdamOptimizer(FLAGS.lr).minimize(loss)
+        self.train_op = tf.compat.v1.train.AdamOptimizer(FLAGS.lr).minimize(loss)
+        # TensorBoard를 위한 요약 정보 정의
+        # self.loss_summary = tf.compat.v1.summary.scalar('Loss', self.loss_train)
+        # self.merged_summary = tf.compat.v1.summary.merge_all()
 
-        # session
-        variables = tf.global_variables()
-        self.saver = tf.train.Saver(variables)
-        init = tf.global_variables_initializer()
-        configProt = tf.ConfigProto()
+        # Session
+        variables = tf.compat.v1.global_variables()
+        self.saver = tf.compat.v1.train.Saver(variables)
+        init = tf.compat.v1.global_variables_initializer()
+        configProt = tf.compat.v1.ConfigProto()
         configProt.gpu_options.allow_growth = True
         configProt.allow_soft_placement = True
-        self.sess = tf.Session(config = configProt)
+        self.sess = tf.compat.v1.Session(config=configProt)
         self.sess.run(init)
+
+        # TensorBoard를 위한 요약 작성기
+        # self.summary_writer = tf.compat.v1.summary.FileWriter('/app/outputs/mnist_predrnn_pp/net', self.sess.graph, flush_secs=10)
+
         if FLAGS.pretrained_model:
             self.saver.restore(self.sess, FLAGS.pretrained_model)
 
@@ -134,7 +141,9 @@ class Model(object):
         feed_dict = {self.x: inputs}
         feed_dict.update({self.tf_lr: lr})
         feed_dict.update({self.mask_true: mask_true})
-        loss, _ = self.sess.run((self.loss_train, self.train_op), feed_dict)
+        loss, _, summary = self.sess.run((self.loss_train, self.train_op, self.merged_summary), feed_dict)
+        self.summary_writer.add_summary(summary)
+        self.summary_writer.flush()
         return loss
 
     def test(self, inputs, mask_true):
@@ -148,16 +157,17 @@ class Model(object):
         self.saver.save(self.sess, checkpoint_path, global_step=itr)
         print('saved to ' + FLAGS.save_dir)
 
-def main(argv=None):
-    #tf.disable_v2_behavior()
-    if tf.gfile.Exists(FLAGS.save_dir):
-        tf.gfile.DeleteRecursively(FLAGS.save_dir)
-    tf.gfile.MakeDirs(FLAGS.save_dir)
-    if tf.gfile.Exists(FLAGS.gen_frm_dir):
-        tf.gfile.DeleteRecursively(FLAGS.gen_frm_dir)
-    tf.gfile.MakeDirs(FLAGS.gen_frm_dir)
 
-    # load data
+def main(argv=None):
+    # 저장 디렉토리 초기화
+    if tf.compat.v1.gfile.Exists(FLAGS.save_dir):
+        tf.compat.v1.gfile.DeleteRecursively(FLAGS.save_dir)
+    tf.compat.v1.gfile.MakeDirs(FLAGS.save_dir)
+    if tf.compat.v1.gfile.Exists(FLAGS.gen_frm_dir):
+        tf.compat.v1.gfile.DeleteRecursively(FLAGS.gen_frm_dir)
+    tf.compat.v1.gfile.MakeDirs(FLAGS.gen_frm_dir)
+
+    # 데이터 로드
     train_input_handle, test_input_handle = datasets_factory.data_provider(
         FLAGS.dataset_name, FLAGS.train_data_paths, FLAGS.valid_data_paths,
         FLAGS.batch_size, FLAGS.img_width)
@@ -181,9 +191,9 @@ def main(argv=None):
         else:
             eta = 0.0
         random_flip = np.random.random_sample(
-            (FLAGS.batch_size,FLAGS.seq_length-FLAGS.input_length-1))
+            (FLAGS.batch_size, FLAGS.seq_length-FLAGS.input_length-1))
         true_token = (random_flip < eta)
-        #true_token = (random_flip < pow(base,itr))
+
         ones = np.ones((FLAGS.img_width//FLAGS.patch_size,
                         FLAGS.img_width//FLAGS.patch_size,
                         FLAGS.patch_size**2*FLAGS.img_channel))
@@ -215,12 +225,13 @@ def main(argv=None):
 
         if itr % FLAGS.test_interval == 0:
             print('test...')
-            test_input_handle.begin(do_shuffle = False)
+
+            test_input_handle.begin(do_shuffle=False)
             res_path = os.path.join(FLAGS.gen_frm_dir, str(itr))
             os.mkdir(res_path)
             avg_mse = 0
             batch_id = 0
-            img_mse,ssim,psnr,fmae,sharp= [],[],[],[],[]
+            img_mse, ssim, psnr, fmae, sharp = [], [], [], [], []
             for i in range(FLAGS.seq_length - FLAGS.input_length):
                 img_mse.append(0)
                 ssim.append(0)
@@ -228,23 +239,23 @@ def main(argv=None):
                 fmae.append(0)
                 sharp.append(0)
             mask_true = np.zeros((FLAGS.batch_size,
-                                  FLAGS.seq_length-FLAGS.input_length-1,
-                                  FLAGS.img_width//FLAGS.patch_size,
-                                  FLAGS.img_width//FLAGS.patch_size,
-                                  FLAGS.patch_size**2*FLAGS.img_channel))
-            while(test_input_handle.no_batch_left() == False):
+                                  FLAGS.seq_length - FLAGS.input_length - 1,
+                                  FLAGS.img_width // FLAGS.patch_size,
+                                  FLAGS.img_width // FLAGS.patch_size,
+                                  FLAGS.patch_size ** 2 * FLAGS.img_channel))
+
+            while not test_input_handle.no_batch_left():
                 batch_id = batch_id + 1
                 test_ims = test_input_handle.get_batch()
                 test_dat = preprocess.reshape_patch(test_ims, FLAGS.patch_size)
                 img_gen = model.test(test_dat, mask_true)
 
-                # concat outputs of different gpus along batch
                 img_gen = np.concatenate(img_gen)
                 img_gen = preprocess.reshape_patch_back(img_gen, FLAGS.patch_size)
-                # MSE per frame
+
                 for i in range(FLAGS.seq_length - FLAGS.input_length):
-                    x = test_ims[:,i + FLAGS.input_length,:,:,0]
-                    gx = img_gen[:,i,:,:,0]
+                    x = test_ims[:, i + FLAGS.input_length, :, :, 0]
+                    gx = img_gen[:, i, :, :, 0]
                     fmae[i] += metrics.batch_mae_frame_float(gx, x)
                     gx = np.maximum(gx, 0)
                     gx = np.minimum(gx, 1)
@@ -261,32 +272,32 @@ def main(argv=None):
                         score, _ = structural_similarity(pred_frm[b],real_frm[b],full=True)
                         ssim[i] += score
 
-                # save prediction examples
                 if batch_id <= 10:
                     path = os.path.join(res_path, str(batch_id))
                     os.mkdir(path)
                     for i in range(FLAGS.seq_length):
-                        name = 'gt' + str(i+1) + '.png'
+                        name = 'gt' + str(i + 1) + '.png'
                         file_name = os.path.join(path, name)
-                        img_gt = np.uint8(test_ims[0,i,:,:,:] * 255)
+                        img_gt = np.uint8(test_ims[0, i, :, :, :] * 255)
                         cv2.imwrite(file_name, img_gt)
-                    for i in range(FLAGS.seq_length-FLAGS.input_length):
-                        name = 'pd' + str(i+1+FLAGS.input_length) + '.png'
+                    for i in range(FLAGS.seq_length - FLAGS.input_length):
+                        name = 'pd' + str(i + 1 + FLAGS.input_length) + '.png'
                         file_name = os.path.join(path, name)
-                        img_pd = img_gen[0,i,:,:,:]
+                        img_pd = img_gen[0, i, :, :, :]
                         img_pd = np.maximum(img_pd, 0)
                         img_pd = np.minimum(img_pd, 1)
                         img_pd = np.uint8(img_pd * 255)
                         cv2.imwrite(file_name, img_pd)
                 test_input_handle.next()
-            avg_mse = avg_mse // (batch_id*FLAGS.batch_size)
+            avg_mse = avg_mse // (batch_id * FLAGS.batch_size)
+            
             print('mse per seq: ' + str(avg_mse))
             for i in range(FLAGS.seq_length - FLAGS.input_length):
-                print(img_mse[i] // (batch_id*FLAGS.batch_size))
-            psnr = np.asarray(psnr, dtype=np.float32)//batch_id
-            fmae = np.asarray(fmae, dtype=np.float32)//batch_id
-            ssim = np.asarray(ssim, dtype=np.float32)//(FLAGS.batch_size*batch_id)
-            sharp = np.asarray(sharp, dtype=np.float32)//(FLAGS.batch_size*batch_id)
+                print(img_mse[i] // (batch_id * FLAGS.batch_size))
+            psnr = np.asarray(psnr, dtype=np.float32) // batch_id
+            fmae = np.asarray(fmae, dtype=np.float32) // batch_id
+            ssim = np.asarray(ssim, dtype=np.float32) // (FLAGS.batch_size * batch_id)
+            sharp = np.asarray(sharp, dtype=np.float32) // (FLAGS.batch_size * batch_id)
             print('psnr per frame: ' + str(np.mean(psnr)))
             for i in range(FLAGS.seq_length - FLAGS.input_length):
                 print(psnr[i])
@@ -306,5 +317,4 @@ def main(argv=None):
         train_input_handle.next()
 
 if __name__ == '__main__':
-    tf.app.run()
-
+    tf.compat.v1.app.run()
